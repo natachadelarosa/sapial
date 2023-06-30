@@ -3,6 +3,9 @@ import * as proc from "https://deno.land/x/proc@0.20.28/mod3.ts";
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { guidelines, role } from "./runtime/prompts/prompts.ts";
 // import { estimateTokens } from "./runtime/utils/utils.ts";
+import { ethers } from "./deps.ts";
+const { providers, Wallet, utils } = ethers;
+
 
 export class Sapial {
     public readonly name: string;
@@ -17,6 +20,10 @@ export class Sapial {
     private readonly conversatationSummarySize = 4_096;
     private readonly messageBufferSize = 4_096;
     private store: Deno.Kv;
+    private provider = new providers.InfuraProvider(
+        "sepolia",
+        "95d1498a021540ffb54ff99b1a7db857"
+      );
 
     constructor(config: IConfig, store: Deno.Kv ) {
         this.name = config.name;
@@ -36,18 +43,22 @@ export class Sapial {
             console.log(`Human message: ${humanMessage}`);
             const humanMessageWithContext = this.injectContext(humanMessage);
             console.log(`Human message with context: ${humanMessageWithContext}`);
-            const streamingResponse = await this.streamLLM(humanMessageWithContext);
-            const { readable, writable } = new TransformStream<Uint8Array>;
-            const [responseReadable, localReadable] = readable.tee()
-            streamingResponse.body!.pipeTo(writable);
-            if (this.memory) {
-                this.streamToString(localReadable).then( async (AIMessage) => {
-                    console.log(`AI response: ${AIMessage}`)
-                    await this.addMessagePairToBuffer(humanMessage, AIMessage);
-                    this.summarizeChatHistory()
-                });
-            }
-            return new Response(responseReadable);
+            const response = await this.chatLLM(humanMessage);
+            console.log("🚀 ~ file: sapial.ts:47 ~ Sapial ~ handler ~ response:", response)
+
+            return new Response(response);
+            // const streamingResponse = await this.streamLLM(humanMessageWithContext);
+            // const { readable, writable } = new TransformStream<Uint8Array>;
+            // const [responseReadable, localReadable] = readable.tee()
+            // response.body!.pipeTo(writable);
+            // if (this.memory) {
+            //     this.streamToString(localReadable).then( async (AIMessage) => {
+            //         console.log(`AI response: ${AIMessage}`)
+            //         await this.addMessagePairToBuffer(humanMessage, AIMessage);
+            //         this.summarizeChatHistory()
+            //     });
+            // }
+            // return new Response(responseReadable);
         };
 
         serve(handler, { port: 4242 });
@@ -183,7 +194,93 @@ export class Sapial {
         const endpoint = `http://localhost:8000/chat/${model}/${prompt}`
         const response = await fetch(endpoint);    
         const json = await response.json();
+    
+        if (json.message?.additional_kwargs?.function_call) {
+            const functionCall = json.message.additional_kwargs.function_call;
+
+            if (functionCall.name === 'create_account') {
+                const createdAccount = await this.createAccount();
+
+                const messages = [
+                    {"role": "user", "content": prompt},
+                    {
+                        "role": "function",
+                        "name": functionCall.name,
+                        "content": JSON.stringify(createdAccount),
+                    },
+                ];
+                console.log("🚀 ~ file: sapial.ts:212 ~ Sapial ~ chatLLM ~ messages:", messages)
+                const secondResponse =  await this.fetchChatCompletion(messages);
+                console.log("🚀 ~ file: sapial.ts:213 ~ Sapial ~ chatLLM ~ response:", secondResponse)
+                
+                const secondJson = await secondResponse.json();
+                console.log("🚀 ~ file: sapial.ts:217 ~ Sapial ~ chatLLM ~ secondJson:", secondJson)
+                const content = secondJson.choices[0].message.content;
+                return content;
+            }
+        }
+
         const content = json.message.content;
         return content;
     }
+
+    async createAccount() {
+        const wallet = ethers.Wallet.createRandom();
+    
+        const privateKey = wallet.privateKey;
+        const publicKey = wallet.publicKey;
+        const address = wallet.address;
+
+        console.log("Private Key:", privateKey);
+        console.log("Public Key:", publicKey);
+        console.log("Address:", address);
+
+        return {
+            "privateKey": privateKey,
+            "publicKey": publicKey,
+            "address": address,
+        }
+    }
+    
+    async makeTransaction(privateKey: string, to: string) {
+        // Create a wallet instance using the private key
+        const wallet = new Wallet(privateKey, this.provider);
+    
+        // Example: Send a transaction
+        const recipientAddress = to;
+        const amountToSend = utils.parseEther("0.1");
+    
+        const transaction = await wallet.sendTransaction({
+        to: recipientAddress,
+        value: amountToSend,
+    });
+
+        console.log("Transaction sent:", transaction.hash);
+
+        return transaction;
+    }
+
+    async fetchChatCompletion(messages: any): Promise<Response> {
+        const apiKey = "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";
+        const url = "https://api.openai.com/v1/chat/completions";
+
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+        };
+
+        const body = JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: messages,
+        });
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers,
+            body,
+        });
+    
+        return response
+    }
+
 }

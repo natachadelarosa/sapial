@@ -23,6 +23,7 @@ async function main() {
         controller.close();
       },
     });
+    console.log("\n");
 
     // construct the request
     const request = new Request(endpoint, {
@@ -43,6 +44,7 @@ async function main() {
       if (done) break;
       Deno.stdout.write(value);
     }
+    console.log("\n");
   }
 }
 

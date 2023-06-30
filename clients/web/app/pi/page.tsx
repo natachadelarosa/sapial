@@ -36,7 +36,7 @@ export default function Chat() {
           className="h-full w-full resize-none text-[#16330F]/50 border-none bg-transparent outline-none caret-color-gray-500 leading-6 font-semibold overflow-y-hidden"
           value={input}
           spellCheck={false}
-          style={{ height: "28px !important;" }}
+          style={{ height: "28px !important" }}
           autoFocus={true}
           onChange={handleInputChange}
         />
