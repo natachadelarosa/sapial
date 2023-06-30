@@ -2,10 +2,12 @@ import { IConfig } from "./interfaces.ts";
 import * as proc from "https://deno.land/x/proc@0.20.28/mod3.ts";
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { guidelines, role } from "./runtime/prompts/prompts.ts";
+import { load } from "https://deno.land/std/dotenv/mod.ts";
 // import { estimateTokens } from "./runtime/utils/utils.ts";
 import { ethers } from "./deps.ts";
 const { providers, Wallet, utils } = ethers;
 
+const env = await load();
 
 export class Sapial {
     public readonly name: string;
@@ -20,10 +22,10 @@ export class Sapial {
     private readonly conversatationSummarySize = 4_096;
     private readonly messageBufferSize = 4_096;
     private store: Deno.Kv;
-    private infuraKey = Deno.env.get("INFURA_KEY");
+    private infuraKey = env["INFURA_KEY"];
     private provider = new providers.InfuraProvider(
         "sepolia",
-        infuraKey
+        this.infuraKey
     );
 
     constructor(config: IConfig, store: Deno.Kv ) {
@@ -262,9 +264,7 @@ export class Sapial {
     }
 
     async fetchChatCompletion(messages: any): Promise<Response> {
-        const env = Deno.env.toObject();
-        console.log("env:", env)
-        const apiKey = Deno.env.get("OPENAI_API_KEY");
+        const apiKey = env["OPENAI_API_KEY"];
         console.log("🚀 ~ file: sapial.ts:265 ~ Sapial ~ fetchChatCompletion ~ apiKey:", apiKey)
         const url = "https://api.openai.com/v1/chat/completions";
 
