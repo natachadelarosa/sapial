@@ -261,7 +261,7 @@ export class Sapial {
     }
 
     async fetchChatCompletion(messages: any): Promise<Response> {
-        const apiKey = "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";
+        const apiKey = Deno.env.get("OPENAI_API_KEY");
         const url = "https://api.openai.com/v1/chat/completions";
 
         const headers = {
