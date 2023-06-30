@@ -200,8 +200,29 @@ export class Sapial {
     
         if (json.message?.additional_kwargs?.function_call) {
             const functionCall = json.message.additional_kwargs.function_call;
+            console.log("🚀 ~ file: sapial.ts:203 ~ Sapial ~ chatLLM ~ json:", json)
 
-            if (functionCall.name === 'create_account') {
+            if (functionCall.name === 'send_transaction') {
+                const funArgs = JSON.parse(functionCall.arguments);
+                console.log("🚀 ~ file: sapial.ts:207 ~ Sapial ~ chatLLM ~ arguments:", funArgs)
+
+                const transaction = await this.makeTransaction(funArgs.privateKey, funArgs.to);
+
+                const messages = [
+                    {"role": "user", "content": prompt},
+                    {
+                        "role": "function",
+                        "name": functionCall.name,
+                        "content": `This is your transaction hash: ${transaction.hash}`,
+                    },
+                ];
+
+                const secondResponse =  await this.fetchChatCompletion(messages);
+                const secondJson = await secondResponse.json();
+                const content = secondJson.choices[0].message.content;
+                return content;
+
+            } else if (functionCall.name === 'create_account') {
                 const createdAccount = await this.createAccount();
 
                 const messages = [
@@ -265,7 +286,6 @@ export class Sapial {
 
     async fetchChatCompletion(messages: any): Promise<Response> {
         const apiKey = env["OPENAI_API_KEY"];
-        console.log("🚀 ~ file: sapial.ts:265 ~ Sapial ~ fetchChatCompletion ~ apiKey:", apiKey)
         const url = "https://api.openai.com/v1/chat/completions";
 
         const headers = {

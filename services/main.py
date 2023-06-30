@@ -73,7 +73,7 @@ def chat(model: str, prompt: str):
     functions = [
         {
             "name": "create_account",
-            "description": "Create an ethereum account for the user.",
+            "description": "Create an ethereum account for the user, and return the address and private key.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -83,7 +83,7 @@ def chat(model: str, prompt: str):
         {
             "name": "send_transaction",
             "description":
-            "Sends an ethereum transaction to be executed in the blockchain for the user.",
+            "Sends an ethereum transaction to be executed in the blockchain for the user, and returns a transaction hash.",
             "parameters": {
             "type": "object",
             "properties": {
