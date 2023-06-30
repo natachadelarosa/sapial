@@ -20,10 +20,11 @@ export class Sapial {
     private readonly conversatationSummarySize = 4_096;
     private readonly messageBufferSize = 4_096;
     private store: Deno.Kv;
+    private infuraKey = Deno.env.get("INFURA_KEY");
     private provider = new providers.InfuraProvider(
         "sepolia",
-        "95d1498a021540ffb54ff99b1a7db857"
-      );
+        infuraKey
+    );
 
     constructor(config: IConfig, store: Deno.Kv ) {
         this.name = config.name;
@@ -82,15 +83,15 @@ export class Sapial {
         const reader = stream.getReader();
         const decoder = new TextDecoder("utf-8");
         let result = "";
-      
+
         while (true) {
-          const { done, value } = await reader.read();
-      
-          if (done) {
-            return result;
-          }
-      
-          result += decoder.decode(value);
+            const { done, value } = await reader.read();
+
+            if (done) {
+                return result;
+            }
+
+            result += decoder.decode(value);
         }
     }
 
@@ -261,7 +262,10 @@ export class Sapial {
     }
 
     async fetchChatCompletion(messages: any): Promise<Response> {
+        const env = Deno.env.toObject();
+        console.log("env:", env)
         const apiKey = Deno.env.get("OPENAI_API_KEY");
+        console.log("🚀 ~ file: sapial.ts:265 ~ Sapial ~ fetchChatCompletion ~ apiKey:", apiKey)
         const url = "https://api.openai.com/v1/chat/completions";
 
         const headers = {
